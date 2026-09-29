@@ -21,22 +21,22 @@ pub fn concurrent_counter(n_threads: usize, count_per_thread: usize) -> usize {
     // TODO: In each thread, lock() and increment count_per_thread times
     // TODO: Join all threads, return final value
     let counter = Arc::new(Mutex::new(0));
-    let mut handlers = Vec::new();
-    for _ in 0..n_threads {
-        let counter = Arc::clone(&counter);
 
-        let handler = thread::spawn(move || {
-            for _ in 0..count_per_thread {
-                let mut count = counter.lock().unwrap();
-                *count += 1;
-            }
-        });
-        handlers.push(handler);
-    }
+    let handlers: Vec<_> = (0..n_threads)
+        .map(|_| {
+            let counter = Arc::clone(&counter);
 
-    for h in handlers {
-        h.join().unwrap();
-    }
+            thread::spawn(move || {
+                for _ in 0..count_per_thread {
+                    *counter.lock().unwrap() += 1;
+                }
+            })
+        })
+        .collect();
+
+    handlers.into_iter().for_each(|handler| {
+        handler.join().unwrap();
+    });
 
     let result = *counter.lock().unwrap();
     result
@@ -52,19 +52,20 @@ pub fn concurrent_collect(n_threads: usize) -> Vec<usize> {
     // TODO: Each thread pushes its own id
     // TODO: After joining all threads, sort the result and return
     let reglist = Arc::new(Mutex::new(Vec::new()));
-    let mut handlers = Vec::new();
 
-    for id in 0..n_threads {
-        let cloned_regp = reglist.clone();
+    let handlers: Vec<_> = (0..n_threads)
+        .map(|id| {
+            let reglist = Arc::clone(&reglist);
 
-        handlers.push(thread::spawn(move || {
-            cloned_regp.lock().unwrap().push(id);
-        }));
-    }
+            thread::spawn(move || {
+                reglist.lock().unwrap().push(id);
+            })
+        })
+        .collect();
 
-    for h in handlers {
-        h.join().unwrap();
-    }
+    handlers.into_iter().for_each(|handler| {
+        handler.join().unwrap();
+    });
 
     let mut result = reglist.lock().unwrap().clone();
     result.sort();

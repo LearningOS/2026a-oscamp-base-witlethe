@@ -31,7 +31,7 @@
 //! Each function includes a `TODO` comment indicating where you need to write code.
 //! Run `cargo test` to check your implementations.
 
-use std::io::{self, BufRead, BufReader, Read, Stdout, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 
 /// Execute the given shell command and return its stdout output.
@@ -101,12 +101,15 @@ pub fn pipe_through_cat(input: &str) -> String {
         .spawn()
         .unwrap();
 
-    {
-        let mut stdin = child.stdin.take().unwrap();
-        stdin.write_all(input.as_bytes()).unwrap();
-    }
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
 
     let mut output = String::new();
+
     child
         .stdout
         .take()
@@ -115,6 +118,7 @@ pub fn pipe_through_cat(input: &str) -> String {
         .unwrap();
 
     child.wait().unwrap();
+
     output
 }
 
@@ -204,29 +208,29 @@ pub fn pipe_through_grep(pattern: &str, input: &str) -> String {
     // TODO: Read output from child stdout line by line
     // TODO: Collect and return matching lines
     let mut child = Command::new("grep")
-    .arg(pattern)
-    .stdin(Stdio::piped())
-    .stdout(Stdio::piped())
-    .spawn()
-    .unwrap();
+        .arg(pattern)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
 
-    {
-        let mut stdin = child.stdin.take().unwrap();
-        stdin.write_all(input.as_bytes()).unwrap();
-    }
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
 
     let stdout = child.stdout.take().unwrap();
-    let reader = BufReader::new(stdout);
 
-    let mut output = String::new();
-
-    for line in reader.lines() {
-        let line = line.unwrap();
-        output.push_str(&line);
-        output.push('\n');
-    }
+    let output = BufReader::new(stdout)
+        .lines()
+        .map(Result::unwrap)
+        .map(|line| format!("{line}\n"))
+        .collect();
 
     child.wait().unwrap();
+
     output
 }
 

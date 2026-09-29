@@ -40,18 +40,17 @@ pub fn multi_producer(n_producers: usize) -> Vec<String> {
     // TODO: Collect all messages and sort
     let (tx, rx) = mpsc::channel();
 
-    let mut handlers = Vec::new();
-    for id in 0..n_producers {
-        let tx = tx.clone();
-        handlers.push(thread::spawn(move || {
-            tx.send(format!("msg from {id}")).unwrap()
-        }));
-    }
+    let handlers: Vec<_> = (0..n_producers)
+        .map(|id| {
+            let tx = tx.clone();
+            thread::spawn(move || tx.send(format!("msg from {id}")).unwrap())
+        })
+        .collect();
     drop(tx);
 
-    for handler in handlers {
+    handlers.into_iter().for_each(|handler| {
         handler.join().unwrap();
-    }
+    });
 
     let mut result: Vec<String> = rx.into_iter().collect();
     result.sort();

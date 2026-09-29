@@ -188,15 +188,15 @@ pub fn parallel_sum(a: Vec<i32>, b: Vec<i32>) -> (i32, i32) {
 #[allow(unused_variables)]
 pub fn named_sleeper(value: i32, ms: u64) -> i32 {
     // TODO: Create a thread builder with name "sleeper"
-    let builder = thread::Builder::new().name(String::from("sleeper"));
     // TODO: Spawn a thread that sleeps for `ms` milliseconds and returns `value`
-    builder
+    // TODO: Join the thread and return the value
+    thread::Builder::new()
+        .name("sleeper".into())
         .spawn(move || {
             thread::sleep(Duration::from_millis(ms));
             value
         })
         .unwrap()
-        // TODO: Join the thread and return the value
         .join()
         .unwrap()
 }
@@ -234,10 +234,10 @@ pub fn scoped_slice_sum(a: &[i32], b: &[i32]) -> (i32, i32) {
     // TODO: Each thread sums its slice
     // TODO: Wait for both threads and return the results
     thread::scope(|s| {
-        let ha = s.spawn(|| a.iter().sum());
-        let hb = s.spawn(|| b.iter().sum());
-
-        (ha.join().unwrap(), hb.join().unwrap())
+        (
+            s.spawn(|| a.iter().sum()).join().unwrap(),
+            s.spawn(|| b.iter().sum()).join().unwrap(),
+        )
     })
 }
 
