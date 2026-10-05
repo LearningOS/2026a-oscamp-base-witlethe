@@ -37,7 +37,8 @@
 #![cfg_attr(not(test), no_std)]
 
 use core::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+use core::ptr::{null, null_mut};
+use core::sync::atomic::Ordering::{Acquire, Release};
 
 /// Free block header, stored at the beginning of each free memory block
 struct FreeBlock {
@@ -119,7 +120,44 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // TODO: Step 2 — no suitable block in free_list, allocate from bump region
         //
         // Same logic as 02_bump_allocator's alloc
-        todo!()
+
+        let head = self.free_list_head();
+
+        let mut prev_ptr: *mut FreeBlock = null_mut();
+        let mut curr = head;
+
+        loop {
+            if curr.is_null() {
+                break;
+            }
+
+            if (curr as usize).is_multiple_of(align) && (*curr).size >= size {
+                if curr == head {
+                    self.set_free_list_head((*curr).next);
+                    return curr as *mut u8;
+                }
+                (*prev_ptr).next = (*curr).next;
+                return curr as *mut u8;
+            }
+
+            prev_ptr = curr;
+            curr = (*curr).next;
+        }
+
+        let align_up = |addr: usize, align: usize| -> usize { (addr + align - 1) & !(align - 1) };
+        self.bump_next
+            .try_update(Release, Acquire, |nxt| {
+                let start = align_up(nxt, align);
+
+                let end = start.checked_add(size)?;
+
+                if end > self.heap_end {
+                    return None;
+                };
+
+                Some(end)
+            })
+            .map_or(null_mut(), |next| align_up(next, align) as *mut u8)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -131,7 +169,10 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // 1. Cast ptr to *mut FreeBlock
         // 2. Write FreeBlock { size, next: current list head }
         // 3. Update free_list head to ptr
-        todo!()
+        let fbptr = ptr as *mut FreeBlock;
+        (*fbptr).size = size;
+        (*fbptr).next = self.free_list_head();
+        self.set_free_list_head(fbptr);
     }
 }
 

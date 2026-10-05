@@ -33,6 +33,7 @@
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
+use core::sync::atomic::Ordering::{Acquire, Release};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct BumpAllocator {
@@ -74,7 +75,21 @@ unsafe impl GlobalAlloc for BumpAllocator {
         // 5. Atomically update next to end using compare_exchange
         //    (if CAS fails, another thread raced — retry in a loop)
         // 6. Return the aligned address as a pointer
-        todo!()
+        let align_up = |addr: usize, align: usize| -> usize { (addr + align - 1) & !(align - 1) };
+
+        self.next
+            .try_update(Release, Acquire, |nxt| {
+                let start = align_up(nxt, layout.align());
+
+                let end = start.checked_add(layout.size())?;
+
+                if end > self.heap_end {
+                    return None;
+                };
+
+                Some(end)
+            })
+            .map_or(null_mut(), |next| align_up(next, layout.align()) as *mut u8)
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
