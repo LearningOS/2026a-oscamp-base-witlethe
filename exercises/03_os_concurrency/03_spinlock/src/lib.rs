@@ -10,7 +10,8 @@
 //! - `UnsafeCell` provides interior mutability
 
 use std::cell::UnsafeCell;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 /// Basic spin lock
 pub struct SpinLock<T> {
@@ -41,7 +42,12 @@ impl<T> SpinLock<T> {
     /// Caller must ensure `unlock` is called after using the data.
     pub fn lock(&self) -> &mut T {
         // TODO
-        todo!()
+        loop {
+            match self.locked.compare_exchange(false, true, Acquire, Relaxed) {
+                Ok(_) => unsafe { return &mut *self.data.get() },
+                Err(_) => core::hint::spin_loop(),
+            }
+        }
     }
 
     /// Release lock.
@@ -49,14 +55,17 @@ impl<T> SpinLock<T> {
     /// TODO: Set locked to false (using Release ordering)
     pub fn unlock(&self) {
         // TODO
-        todo!()
+        self.locked.store(false, Release);
     }
 
     /// Try to acquire lock without spinning.
     /// Returns Some(&mut T) on success, None if lock is busy.
     pub fn try_lock(&self) -> Option<&mut T> {
         // TODO: Single compare_exchange attempt
-        todo!()
+        match self.locked.compare_exchange(false, true, Acquire, Relaxed) {
+            Ok(_) => unsafe { Some(&mut *self.data.get()) },
+            Err(_) => None,
+        }
     }
 }
 
