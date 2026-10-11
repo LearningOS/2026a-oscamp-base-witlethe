@@ -12,8 +12,8 @@
 use std::cell::UnsafeCell;
 use std::hint::spin_loop;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 pub struct SpinLock<T> {
     locked: AtomicBool,
@@ -61,9 +61,7 @@ impl<T> Deref for SpinGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe {
-            self.lock.data.get().as_ref_unchecked()
-        }
+        unsafe { self.lock.data.get().as_ref_unchecked() }
     }
 }
 
@@ -71,9 +69,7 @@ impl<T> Deref for SpinGuard<'_, T> {
 // Return &mut T
 impl<T> DerefMut for SpinGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe {
-            self.lock.data.get().as_mut_unchecked()
-        }
+        unsafe { self.lock.data.get().as_mut_unchecked() }
     }
 }
 

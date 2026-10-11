@@ -85,7 +85,6 @@ impl FdTable {
     pub fn get(&self, fd: usize) -> Option<Arc<dyn File>> {
         // TODO
         self.map_table.get(fd)?.clone()
-
     }
 
     /// Close an fd. Returns true on success, false if the fd doesn't exist or is already closed.

@@ -31,7 +31,7 @@ pub async fn producer_consumer(items: Vec<String>) -> Vec<String> {
 
         while let Some(value) = rx.recv().await {
             items.push(value);
-        };
+        }
 
         items
     };
@@ -52,7 +52,10 @@ pub async fn fan_in(n_producers: usize) -> Vec<String> {
     let producer = async move {
         for id in 0..n_producers {
             let tx_cloned = tx.clone();
-            tx_cloned.send(format!("producer {id}: message")).await.unwrap()
+            tx_cloned
+                .send(format!("producer {id}: message"))
+                .await
+                .unwrap()
         }
     };
 

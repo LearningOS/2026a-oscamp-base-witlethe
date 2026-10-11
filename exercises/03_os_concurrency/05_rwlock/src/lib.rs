@@ -99,10 +99,11 @@ impl<T> RwLock<T> {
             if (state & (READER_MASK | WRITER_HOLDING)) == 0
                 && self
                     .state
-                    .compare_exchange_weak(state, state | WRITER_HOLDING, AcqRel, Relaxed).is_ok()
-                {
-                    return RwLockWriteGuard { lock: self };
-                }
+                    .compare_exchange_weak(state, state | WRITER_HOLDING, AcqRel, Relaxed)
+                    .is_ok()
+            {
+                return RwLockWriteGuard { lock: self };
+            }
         }
     }
 }
